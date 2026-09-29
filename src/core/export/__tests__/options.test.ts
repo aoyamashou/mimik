@@ -30,7 +30,21 @@ describe('normaliseExportOptions', () => {
       stepDescriptions: DEFAULT_EXPORT_OPTIONS.stepDescriptions,
       resolution: DEFAULT_EXPORT_OPTIONS.resolution,
       gifQuality: DEFAULT_EXPORT_OPTIONS.gifQuality,
+      bundleStripInputs: DEFAULT_EXPORT_OPTIONS.bundleStripInputs,
+      bundleUrls: DEFAULT_EXPORT_OPTIONS.bundleUrls,
+      voiceover: DEFAULT_EXPORT_OPTIONS.voiceover,
     });
+  });
+
+  it('rejects an unknown bundle url mode', () => {
+    expect(normaliseExportOptions({ bundleUrls: 'everything' }).bundleUrls).toBe(DEFAULT_EXPORT_OPTIONS.bundleUrls);
+    expect(normaliseExportOptions({ bundleUrls: 'origin' }).bundleUrls).toBe('origin');
+  });
+
+  it('keeps typed text stripped unless it is explicitly turned off', () => {
+    expect(normaliseExportOptions({}).bundleStripInputs).toBe(true);
+    expect(normaliseExportOptions({ bundleStripInputs: 'no' }).bundleStripInputs).toBe(true);
+    expect(normaliseExportOptions({ bundleStripInputs: false }).bundleStripInputs).toBe(false);
   });
 
   it('rejects an unknown gif quality so the encoder never gets bogus dimensions', () => {
@@ -67,6 +81,15 @@ describe('export option persistence', () => {
     const options = { ...DEFAULT_EXPORT_OPTIONS, cover: false, imageScale: 'large' as const };
     await saveExportOptions(options);
     expect(await loadExportOptions()).toEqual(options);
+  });
+
+  it('never brings voice-over back on from storage, since it costs money', async () => {
+    await fakeBrowser.storage.local.set({ exportOptions: { ...DEFAULT_EXPORT_OPTIONS, voiceover: true } });
+    expect((await loadExportOptions()).voiceover).toBe(false);
+
+    await saveExportOptions({ ...DEFAULT_EXPORT_OPTIONS, voiceover: true });
+    const stored = await fakeBrowser.storage.local.get('exportOptions');
+    expect((stored.exportOptions as { voiceover: boolean }).voiceover).toBe(false);
   });
 
   it('survives a corrupted stored value', async () => {

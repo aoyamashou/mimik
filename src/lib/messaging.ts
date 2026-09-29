@@ -1,12 +1,14 @@
 import { defineExtensionMessaging } from '@webext-core/messaging';
 import type { DOMContext } from '@/core/capture/dom/context';
-import type { CaptureStateValue } from '@/core/capture/machine';
+import type { CaptureStateValue, PauseReason } from '@/core/capture/machine';
+import type { VoiceoverProviderKey } from '@/core/export/voiceover/providers';
 import type { ElementMeta } from '@/core/guides/types';
 
 export interface GetStateResponse {
   state: CaptureStateValue;
   stepCount: number;
   currentGuideId: string | null;
+  pauseReason: PauseReason | null;
 }
 
 export interface StartRecordingData {
@@ -121,6 +123,15 @@ export interface ValidateApiKeyResponse {
   warning?: 'cannot-spend';
 }
 
+export interface ListVoicesData {
+  provider: VoiceoverProviderKey;
+  apiKey: string;
+}
+
+export interface ListVoicesResponse {
+  voices: { id: string; name: string }[];
+}
+
 export interface EnterBlurModeResponse {
   entered: boolean;
 }
@@ -131,6 +142,14 @@ export interface StartNarrationResponse {
 
 export interface ExitBlurModeResponse {
   exited: boolean;
+}
+
+export interface PauseCaptureResponse {
+  paused: boolean;
+}
+
+export interface ResumeCaptureResponse {
+  resumed: boolean;
 }
 
 interface MimikProtocol {
@@ -146,9 +165,12 @@ interface MimikProtocol {
   guideMeGoTo(data: GuideMe_GoToData): GuideMe_GoToResponse;
   enterBlurMode(): EnterBlurModeResponse;
   exitBlurMode(): ExitBlurModeResponse;
+  pauseCapture(): PauseCaptureResponse;
+  resumeCapture(): ResumeCaptureResponse;
   startNarration(): StartNarrationResponse;
   generateGuideDescription(data: GenerateGuideDescriptionData): GenerateGuideDescriptionResponse;
   validateApiKey(data: ValidateApiKeyData): ValidateApiKeyResponse;
+  listVoices(data: ListVoicesData): ListVoicesResponse;
   rewriteSelection(data: RewriteSelectionData): RewriteSelectionResponse;
 }
 

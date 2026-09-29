@@ -156,6 +156,22 @@ describe('findFocusableAncestor', () => {
     expect(findFocusableAncestor(span)).toBe(button);
     button.remove();
   });
+
+  it('resolves an ARIA option to itself rather than the tabIndex=-1 listbox wrapping it', () => {
+    const list = document.createElement('div');
+    list.setAttribute('role', 'listbox');
+    list.tabIndex = -1;
+    const option = document.createElement('div');
+    option.setAttribute('role', 'option');
+    const label = document.createElement('span');
+    option.appendChild(label);
+    list.appendChild(option);
+    document.body.appendChild(list);
+
+    expect(findFocusableAncestor(option)).toBe(option);
+    expect(findFocusableAncestor(label)).toBe(option);
+    list.remove();
+  });
 });
 
 describe('getFieldLabel', () => {
@@ -187,6 +203,21 @@ describe('getFieldLabel', () => {
     const input = document.createElement('input');
     input.setAttribute('aria-label', 'Search');
     expect(getFieldLabel(input)).toBe('Search');
+  });
+
+  it('reads a label written in a script without Latin letters', () => {
+    const label = document.createElement('label');
+    label.textContent = '邮箱';
+    const input = document.createElement('input');
+    label.appendChild(input);
+    document.body.appendChild(label);
+    Object.defineProperty(label, 'innerText', { value: '邮箱' });
+    expect(getFieldLabel(input)).toBe('邮箱');
+    label.remove();
+  });
+
+  it('has no label of its own to offer when nothing names the field', () => {
+    expect(getFieldLabel(document.createElement('input'))).toBeNull();
   });
 
   it('falls back to the name when nothing readable is available', () => {

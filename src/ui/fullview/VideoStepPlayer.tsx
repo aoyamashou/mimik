@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Maximize, Minimize, Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize, Minimize, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { i18n } from '#imports';
 import type { StepKind, VideoChapter } from '@/core/export/video-export';
@@ -16,7 +16,9 @@ const KIND_DOT: Record<StepKind, string> = {
 
 interface VideoStepPlayerProps {
   src: string;
+  type: 'video/mp4' | 'video/webm';
   chapters: VideoChapter[];
+  narrated?: boolean;
 }
 
 function formatClock(seconds: number): string {
@@ -31,13 +33,33 @@ function activeIndex(chapters: VideoChapter[], time: number): number {
   return -1;
 }
 
+const WAVE_BARS = [3, 7, 4, 8, 5];
+
+function SpokenMark({ talking }: { talking: boolean }) {
+  return (
+    <span role="img" aria-label={i18n.t('videoPlayer.spoken')} className="mt-1 flex shrink-0 items-center gap-[2px]">
+      {WAVE_BARS.map((height, i) => (
+        <span
+          key={height}
+          className={`w-[2px] rounded-[1px] ${talking ? 'animate-talk bg-lavender' : 'bg-lavender/70'}`}
+          style={{ height: `${height}px`, animationDelay: talking ? `${i * 90}ms` : undefined }}
+        />
+      ))}
+    </span>
+  );
+}
+
 function StepList({
   chapters,
   index,
+  narrated,
+  playing,
   onJump,
 }: {
   chapters: VideoChapter[];
   index: number;
+  narrated: boolean;
+  playing: boolean;
   onJump: (n: number) => void;
 }) {
   const list = useRef<HTMLElement>(null);
@@ -62,6 +84,7 @@ function StepList({
         >
           <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${KIND_DOT[chapter.kind]}`} />
           <span className="min-w-0 flex-1 text-[10.5px] leading-snug text-white/80">{chapter.title}</span>
+          {narrated && chapter.spoken && <SpokenMark talking={playing && i === index} />}
           <span className="pt-0.5 font-mono text-[9px] tabular-nums text-white/40">{formatClock(chapter.start)}</span>
         </button>
       ))}
@@ -69,13 +92,14 @@ function StepList({
   );
 }
 
-export default function VideoStepPlayer({ src, chapters }: VideoStepPlayerProps) {
+export default function VideoStepPlayer({ src, chapters, narrated = false }: VideoStepPlayerProps) {
   const root = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [rate, setRate] = useState(1);
   const [paused, setPaused] = useState(true);
+  const [muted, setMuted] = useState(!narrated);
   const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
@@ -104,6 +128,10 @@ export default function VideoStepPlayer({ src, chapters }: VideoStepPlayerProps)
     if (video.current) video.current.playbackRate = RATES[(RATES.indexOf(rate) + 1) % RATES.length];
   };
 
+  const toggleMute = () => {
+    if (video.current) video.current.muted = !video.current.muted;
+  };
+
   const toggleFullscreen = () => {
     if (document.fullscreenElement === root.current) void document.exitFullscreen();
     else void root.current?.requestFullscreen();
@@ -115,8 +143,8 @@ export default function VideoStepPlayer({ src, chapters }: VideoStepPlayerProps)
         <video
           ref={video}
           src={src}
-          autoPlay
-          muted
+          autoPlay={!narrated}
+          muted={!narrated}
           playsInline
           className="size-full object-contain"
           onDurationChange={(e) => setDuration(e.currentTarget.duration)}
@@ -125,6 +153,7 @@ export default function VideoStepPlayer({ src, chapters }: VideoStepPlayerProps)
           onRateChange={(e) => setRate(e.currentTarget.playbackRate)}
           onSeeked={(e) => setTime(e.currentTarget.currentTime)}
           onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+          onVolumeChange={(e) => setMuted(e.currentTarget.muted)}
         >
           <track kind="captions" />
         </video>
@@ -175,6 +204,15 @@ export default function VideoStepPlayer({ src, chapters }: VideoStepPlayerProps)
 
           <button
             type="button"
+            onClick={toggleMute}
+            aria-label={i18n.t(muted ? 'videoPlayer.unmute' : 'videoPlayer.mute')}
+            className="rounded-md p-1 hover:bg-white/15"
+          >
+            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+
+          <button
+            type="button"
             onClick={toggleFullscreen}
             aria-label={i18n.t(fullscreen ? 'videoPlayer.exitFullscreen' : 'videoPlayer.fullscreen')}
             className="rounded-md p-1 hover:bg-white/15"
@@ -184,7 +222,9 @@ export default function VideoStepPlayer({ src, chapters }: VideoStepPlayerProps)
         </div>
       </div>
 
-      {chapters.length > 0 && <StepList chapters={chapters} index={index} onJump={jump} />}
+      {chapters.length > 0 && (
+        <StepList chapters={chapters} index={index} narrated={narrated} playing={!paused} onJump={jump} />
+      )}
     </div>
   );
 }

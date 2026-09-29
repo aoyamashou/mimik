@@ -1,4 +1,4 @@
-import { type AIProviderKey, isProviderKey, providerOrDefault } from './models';
+import { AI_PROVIDERS, type AIProviderKey, isCustomBaseUrl, isProviderKey, providerOrDefault } from './models';
 
 export type AIApiKeys = Partial<Record<AIProviderKey, string>>;
 
@@ -41,4 +41,17 @@ export function resolveAiKey(stored: { aiApiKeys?: unknown; aiApiKey?: unknown; 
 } {
   const provider = providerOrDefault(stored.aiProvider);
   return { provider, apiKey: keyFor(migrateApiKeys(stored), provider) };
+}
+
+export function resolveBorrowableOpenAIKey(stored: {
+  aiApiKeys?: unknown;
+  aiApiKey?: unknown;
+  aiProvider?: unknown;
+  aiBaseUrl?: unknown;
+}): string {
+  const { provider, apiKey } = resolveAiKey(stored);
+  if (provider !== 'openai') return '';
+  const baseUrl = typeof stored.aiBaseUrl === 'string' ? stored.aiBaseUrl : undefined;
+  if (isCustomBaseUrl(AI_PROVIDERS.openai, baseUrl)) return '';
+  return apiKey;
 }
